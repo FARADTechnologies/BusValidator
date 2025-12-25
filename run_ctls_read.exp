@@ -1,0 +1,63 @@
+#!/usr/bin/expect -f
+# cleaned known-good expect script
+set timeout -1
+
+# spawn demo inside a shell and set LD_LIBRARY_PATH in that shell
+spawn sh -c "cd /home/atilhan/idtech/80144801-001-B/Demo/aarch64 && export LD_LIBRARY_PATH=/home/atilhan/idtech/80144801-001-B/Demo/aarch64:\$LD_LIBRARY_PATH && ./IDTechSDK_Demo"
+
+# initial menu picks
+expect "Please Input your Selection. (0 - exit current menu)"
+send "2\r"
+
+expect "Please Input your Selection. (0 - exit current menu)"
+send "1\r"
+
+expect "Please Input your Selection. (0 - exit current menu)"
+send "2\r"
+
+# main loop: start CTLS, wait up to 20s for data, parse and call parse_card_data
+while {1} {
+    send "1\r"
+    puts "Start CTLS Trans başlatıldı. Kartı cihaza yaklaştırın..."
+    set start_time [clock seconds]
+    set found 0
+
+    while {[expr {[clock seconds] - $start_time}] < 20} {
+        expect {
+            -re {DFEF4D:\s*([0-9A-Fa-f]+)} {
+                set hex_data $expect_out(1,string)
+                puts "DFEF4D Hex Data: $hex_data"
+                set fp [open "/tmp/card_data_hex.txt" "w"]
+                puts $fp $hex_data
+                close $fp
+                exec /home/atilhan/parse_card_data &
+                set found 1
+                break
+            }
+            -re {C1DFEE([0-9A-Fa-f]+)} {
+                set hex_data $expect_out(0,string)
+                puts "C1DFEE Hex Data: $hex_data"
+                set fp [open "/tmp/card_data_hex.txt" "w"]
+                puts $fp $hex_data
+                close $fp
+                exec /home/atilhan/parse_card_data &
+                set found 1
+                break
+            }
+            -re {Please Tap Card.*} {
+                exp_continue
+            }
+            timeout 1 { }
+        }
+    }
+
+    # cancel transaction (safe) then loop again
+    send "2\r"
+
+    if {$found == 1} {
+        puts "Kart verisi kaydedildi."
+    } else {
+        puts "Kart okunamadı, zaman aşımı!"
+    }
+    sleep 1
+}

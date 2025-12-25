@@ -1,0 +1,17 @@
+[Unit]
+Description=Bus Payment Kiosk Starter
+After=network-online.target graphical.target
+Wants=network-online.target graphical.target
+
+[Service]
+Type=simple
+User=atilhan
+WorkingDirectory=/home/atilhan
+ExecStart=/home/atilhan/start_all.sh
+Restart=always
+RestartSec=2
+StandardOutput=append:/home/atilhan/logs/bus-kiosk.service.log
+StandardError=append:/home/atilhan/logs/bus-kiosk.service.log
+
+[Install]
+WantedBy=multi-user.target
