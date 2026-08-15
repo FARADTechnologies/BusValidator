@@ -4,21 +4,15 @@ Ordered by what blocks what, not by size.
 
 ## Hardening
 
-The gaps documented in [SECURITY_NOTES.md](SECURITY_NOTES.md), in the order they
-should land. The first three are prepared and under review.
+The gaps documented in [SECURITY_NOTES.md](SECURITY_NOTES.md). Pan masking,
+field validation and configuration have landed; what is left:
 
-- **Mask the pan in logs.** First six and last four at most, everywhere the pan
-  is written. Stop logging the request body and the `curl` command line.
-- **Mask the pan on screen.** The passenger needs to recognise the card, not
-  read it back.
-- **Validate parsed fields.** The pan is digits, the expiry is four digits.
-  Reject anything else at the parser, before it reaches a buffer.
-- **Replace the shelled-out curl with libcurl.** Removes the injection surface
-  and the fragile status-code parsing in one change.
-- **Read configuration from `validator.env`.** Endpoint, paths and account stop
-  being compiled-in constants.
+- **Replace the shelled-out curl with libcurl.** Validation closes the known
+  injection path, but the shell is still in the request path. libcurl removes
+  the category, and fixes the fragile status-code parsing in the same change.
 - **Drop the sudo rule for a udev rule.** Raw USB access by group membership
-  instead of passwordless root.
+  instead of passwordless root. The rule is written up in DEPLOYMENT.md; the
+  default deployment has not moved to it.
 - **Mutual TLS to the backend.** Per-unit client certificates, individually
   revocable.
 
