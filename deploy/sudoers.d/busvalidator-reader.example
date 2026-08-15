@@ -1,1 +1,39 @@
-atilhan ALL=(ALL) NOPASSWD: /usr/bin/expect -f /home/atilhan/run_ctls_read.exp
+# Grants the kiosk account the right to run the card reader loop as root,
+# without a password prompt, so the unit can come up unattended at boot.
+#
+# Install with:
+#   sudo install -m 0440 -o root -g root \
+#       deploy/sudoers.d/busvalidator-reader.example \
+#       /etc/sudoers.d/busvalidator-reader
+#   sudo visudo -c
+#
+# Replace VALIDATOR_USER and the paths below with the values from
+# config/validator.env before installing.
+#
+# -----------------------------------------------------------------------------
+# SECURITY NOTE  (added 2026-08-15, documentation pass v0.1.0 — the rule itself
+# is unchanged from the prototype deployment)
+#
+# expect is a general-purpose interpreter: it can spawn a shell and run
+# arbitrary commands. A NOPASSWD rule pointing at an expect script therefore
+# grants effective root to anyone who can modify that script. The rule is only
+# as strong as the file permissions on the script it names.
+#
+# Mandatory hardening — the script must not be writable by the kiosk account:
+#   sudo chown root:root /opt/busvalidator/src/reader/run_ctls_read.exp
+#   sudo chmod 0644      /opt/busvalidator/src/reader/run_ctls_read.exp
+#
+# Without that, the privilege boundary this rule appears to draw does not
+# exist: the kiosk account rewrites the script, sudo runs it as root.
+#
+# Preferred alternative — drop the sudo rule entirely. Root is only needed for
+# raw USB access to the reader, which a udev rule can grant to a group instead:
+#
+#   # /etc/udev/rules.d/99-idtech.rules
+#   SUBSYSTEM=="usb", ATTRS{idVendor}=="0acd", MODE="0660", GROUP="plugdev"
+#
+# Add the kiosk account to plugdev, and the reader loop runs unprivileged.
+# See docs/SECURITY_NOTES.md for the full reasoning.
+# -----------------------------------------------------------------------------
+
+VALIDATOR_USER ALL=(ALL) NOPASSWD: /usr/bin/expect -f /opt/busvalidator/src/reader/run_ctls_read.exp
