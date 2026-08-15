@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build C++
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Check the binaries exist
+        run: test -x build/parse_card_data && test -x build/fifo_writer
+
+  lint-python:
+    name: Lint Python
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # PyQt5 is not installed here: the interface needs a display and the
+      # packaged Qt build, neither of which a runner has. Syntax and static
+      # checks are what CI can usefully assert.
+      - name: Syntax check
+        run: python -m compileall -q src
+
+      - name: Ruff
+        run: |
+          pip install ruff
+          ruff check --select E9,F63,F7,F82 src
+
+  lint-shell:
+    name: Lint shell
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Warnings are not fatal: the deployment script carries known ones that
+      # are tracked in docs/ROADMAP.md. Errors are.
+      - name: ShellCheck
+        run: shellcheck --severity=error deploy/scripts/*.sh

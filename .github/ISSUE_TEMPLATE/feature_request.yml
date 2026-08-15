@@ -1,0 +1,41 @@
+name: Feature request
+description: Propose a capability or a change in behaviour
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check [docs/ROADMAP.md](../blob/main/docs/ROADMAP.md) first — much of
+        what is missing is already planned, and an issue against a roadmap item
+        is more useful than a duplicate of it.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What does not work today, or what does the terminal fail to do.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+    validations:
+      required: true
+
+  - type: dropdown
+    id: hardware-needed
+    attributes:
+      label: Does this need hardware that is not in the current build?
+      options:
+        - No, software only
+        - Yes, an existing sensor that has no software yet
+        - Yes, new hardware
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/FARADTechnologies/BusValidator/security/advisories/new
+    about: This project handles card data. Report privately, not as a public issue.
+  - name: Deployment and hardware documentation
+    url: https://github.com/FARADTechnologies/BusValidator/tree/main/docs
+    about: Architecture, hardware selection, deployment steps and the payment flow.
