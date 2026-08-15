@@ -1,0 +1,37 @@
+# --- secrets / local configuration (never commit) ---
+config/validator.env
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+id_rsa*
+
+# --- build output ---
+build/
+dist/
+*.o
+*.a
+*.so
+src/reader/parse_card_data
+src/tools/fifo_writer
+
+# --- runtime artefacts ---
+logs/
+*.log
+card_data_hex.txt
+
+# --- python ---
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# --- editors / OS ---
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+.DS_Store

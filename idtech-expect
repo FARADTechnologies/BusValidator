@@ -1,1 +1,0 @@
-atilhan ALL=(ALL) NOPASSWD: /usr/bin/expect -f /home/atilhan/run_ctls_read.exp

@@ -1,0 +1,62 @@
+name: Bug report
+description: Something does not work as described
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Never paste a real card number. Use a test card, and scrub any log you
+        attach — `/tmp/api_log.txt` currently contains unmasked pans.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Card reader pipeline (expect, SDK)
+        - Card parsing and authorisation (parse_card_data)
+        - Kiosk interface (card_gui)
+        - Deployment (systemd, startup, privileges)
+        - Documentation
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happens
+    attributes:
+      label: What happens
+      description: And what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start the service
+        2. Tap a card
+        3. The spinner never resolves
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: From `journalctl -u bus-kiosk` or the files under the log directory. Scrub card numbers first.
+      render: shell
+
+  - type: input
+    id: hardware
+    attributes:
+      label: Hardware
+      description: Board, reader and display. Say if you reproduced it without a reader attached.
+      placeholder: Raspberry Pi 5 8GB, IDTech Kiosk V, 43H-800480-IPS-CT
+
+  - type: input
+    id: version
+    attributes:
+      label: Commit
+      placeholder: output of `git rev-parse --short HEAD`
