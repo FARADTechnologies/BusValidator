@@ -96,8 +96,13 @@ default: if the variable is unset the terminal logs the fact and declines,
 rather than posting card data to whatever a stale constant pointed at.
 
 The same treatment covers the FIFO, the card data path, the log path, the
-assets directory, the fare, the SDK directory and the tap timeout — the
-hardcoded `/home/atilhan` paths are gone from all four source files.
+assets directory, the fare, the SDK directory and the tap timeout.
+
+Every `/home/atilhan` path in executable code is gone. Two remain in
+`parse_card_data.cpp`, inside a commented-out debug block kept from the
+original bring-up. They do not run and do not affect behaviour, and the
+comments in these files are the author's own, so they were left alone rather
+than tidied away as a side effect of this change.
 
 ### 5. The reader loop runs under a broad sudo rule
 
