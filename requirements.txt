@@ -1,0 +1,4 @@
+# Kiosk user interface (src/gui/card_gui.py).
+# PyQt5 is used rather than PyQt6 because it is the version packaged for
+# Raspberry Pi OS, which avoids building Qt from source on the device.
+PyQt5>=5.15,<6
