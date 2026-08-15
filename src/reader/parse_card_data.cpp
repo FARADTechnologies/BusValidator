@@ -5,6 +5,7 @@
 #include <string>
 #include <cctype>
 #include <cstdlib>
+#include <algorithm>
 #include <chrono>
 #include <ctime>
 #include <cstdio>
@@ -12,6 +13,32 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
+
+// Ayarlar environment'tan gelir, binary'ye gömülü kalmaz.
+// Değişken yoksa prototipin çalıştığı değere düşer.
+static std::string envOr(const char* name, const std::string& fallback) {
+    const char* v = std::getenv(name);
+    return (v && *v) ? std::string(v) : fallback;
+}
+
+// Tam PAN log'a düşmemeli. İlk 6 + son 4, destek için kartı tanımaya yeter,
+// geri kalanı yeniden kurmaya yetmez.
+static std::string maskPan(const std::string& pan) {
+    if (pan.length() < 10) return std::string(pan.length(), '*');
+    return pan.substr(0, 6)
+         + std::string(pan.length() - 10, '*')
+         + pan.substr(pan.length() - 4);
+}
+
+// PAN ve expiry karttan geliyor, yani girdi bize ait değil. Rakam dışında
+// bir şey shell'e gitmemeli.
+static bool allDigits(const std::string& s) {
+    if (s.empty()) return false;
+    for (unsigned char c : s) {
+        if (!std::isdigit(c)) return false;
+    }
+    return true;
+}
 
 class CardDataProcessor {
 private:
@@ -21,7 +48,8 @@ private:
 
     // Loglama fonksiyonu
     void writeLog(const std::string& level, const std::string& message) {
-        std::ofstream logFile("/tmp/api_log.txt", std::ios_base::app);
+        std::ofstream logFile(envOr("VALIDATOR_API_LOG", "/tmp/api_log.txt"),
+                              std::ios_base::app);
         if (logFile.is_open()) {
             auto now = std::chrono::system_clock::now();
             std::time_t time_now = std::chrono::system_clock::to_time_t(now);
@@ -111,7 +139,7 @@ private:
             return "";
         }
         std::string pan = hexData.substr(panStart, 16);
-        logInfo("C1DFEE'den PAN çıkarıldı: " + pan);
+        logInfo("C1DFEE'den PAN çıkarıldı: " + maskPan(pan));
         return pan;
     }
 
@@ -195,14 +223,40 @@ private:
     // API çağrısı (curl ile)
     void sendToAPI(const std::string& pan, const std::string& formattedExpiry) {
         logInfo("sendToAPI fonksiyonu başlatıldı");
-        logInfo("PAN: " + pan);
+
+        // Endpoint artık kaynak koda gömülü değil. Ayarlanmamışsa sessizce
+        // yanlış yere istek atmaktansa burada durmalı.
+        if (apiUrl.empty()) {
+            logError("VALIDATOR_API_URL tanımlı değil, istek gönderilmedi.");
+            sendToGUI("fail");
+            return;
+        }
+
+        logInfo("PAN: " + maskPan(pan));
         logInfo("Formatlanmış Expiry: " + formattedExpiry);
 
+        // Komut string'e gömüldüğü için shell'e giden her şey rakam olmalı.
+        // Tek tırnak içeren bir PAN argümanı kapatıp komut enjekte edebilirdi.
+        if (!allDigits(pan)) {
+            logError("PAN rakam dışı karakter içeriyor, istek gönderilmedi.");
+            sendToGUI("fail");
+            return;
+        }
+
+        std::string expiryDigits = formattedExpiry;
+        expiryDigits.erase(std::remove(expiryDigits.begin(), expiryDigits.end(), '/'),
+                           expiryDigits.end());
+        if (!allDigits(expiryDigits)) {
+            logError("Expiry rakam dışı karakter içeriyor, istek gönderilmedi.");
+            sendToGUI("fail");
+            return;
+        }
+
         std::string jsonData = "{\"pan\":\"" + pan + "\",\"expiryDate\":\"" + formattedExpiry + "\",\"expiry_date\":\"" + formattedExpiry + "\"}";
-        logInfo("Gönderilecek JSON: " + jsonData);
-//
+
         std::string command = "curl -s -w '%{http_code}' -X POST " + apiUrl + " -H 'Content-Type: application/json' -d '" + jsonData + "'";
-        logInfo("API'ye gönderiliyor: " + command);
+        // Komut ve gövde PAN taşıyor, log'a yazılmıyor.
+        logInfo("API'ye istek gönderiliyor: " + apiUrl);
 
         /*std::string command =
             "curl -s "
@@ -252,10 +306,10 @@ private:
     }
 
 public:
-    CardDataProcessor(const std::string& filePath = "/tmp/card_data_hex.txt",
-                     const std::string& fifoPath = "/tmp/bus_payment_control",
-                     const std::string& apiUrl = "https://api.yeri.az/api/v1/payment/card/")
-        : filePath(filePath), fifoPath(fifoPath), apiUrl(apiUrl) {}
+    CardDataProcessor()
+        : filePath(envOr("VALIDATOR_CARD_DATA", "/tmp/card_data_hex.txt")),
+          fifoPath(envOr("VALIDATOR_FIFO", "/tmp/bus_payment_control")),
+          apiUrl(envOr("VALIDATOR_API_URL", "")) {}
 
     void processCardData() {
         try {
@@ -300,7 +354,7 @@ public:
                 sendToGUI("fail");
                 return;
             }
-            logInfo("Çıkarılan PAN: " + pan);
+            logInfo("Çıkarılan PAN: " + maskPan(pan));
 
             if (expiry.empty()) {
                 logError("Expiry bulunamadı.");

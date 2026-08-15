@@ -196,11 +196,15 @@ The certified element of the payment path is the IDTech reader, which holds the
 EMV kernel and the keys; the application code around it handles the extracted
 pan only.
 
-Known gaps in the current build, with the reasoning and the fix for each, are
-documented in [docs/SECURITY_NOTES.md](docs/SECURITY_NOTES.md) rather than left
-implicit. The short version: the pan reaches logs and the screen unmasked, the
-backend call shells out to curl, and the reader loop runs under a broad sudo
-rule. None of these belong in a production unit and all are tracked.
+The pan is masked to first six and last four everywhere it is written or
+displayed, and the parsed fields are validated as digits before they reach the
+backend request. Configuration, including the endpoint, comes from the
+environment rather than from compiled-in constants.
+
+What is still open — the shelled-out `curl`, the sudo rule for the reader loop,
+and the absence of application-layer authentication — is documented with the
+reasoning and the fix for each in
+[docs/SECURITY_NOTES.md](docs/SECURITY_NOTES.md) rather than left implicit.
 
 To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
@@ -216,9 +220,9 @@ first and folded back in.
 
 Near term, in [docs/ROADMAP.md](docs/ROADMAP.md) with the detail:
 
-- Move the pan out of logs and mask it on screen
-- Replace the shelled-out curl with libcurl and drop the sudo rule for a udev rule
-- Read configuration from `validator.env` instead of compiled-in constants
+- Replace the shelled-out curl with libcurl
+- Drop the sudo rule for the reader loop in favour of a udev rule
+- Mutual TLS to the payment backend
 - Publish the QR, counting and telemetry modules
 - English throughout — the interface and the logs are still Azerbaijani and Turkish
 

@@ -20,8 +20,25 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Security note on the sudoers fragment explaining why the rule it contains is
   effectively root, and how to remove the need for it.
 
+### Security
+
+- The pan is masked to first six and last four everywhere it is written: the
+  authorisation log, the interface, the FIFO command traces and the reader
+  loop's capture line. The request body and the `curl` command line are no
+  longer logged at all.
+- The pan and expiry are validated as digits before reaching the command
+  string, closing a shell injection path that was reachable from card data.
+- Configuration is read from the environment. There is no compiled-in endpoint:
+  an unset `VALIDATOR_API_URL` declines the tap instead of posting card data
+  somewhere stale.
+
 ### Changed
 
+- Hardcoded `/home/atilhan` paths replaced by environment lookups across the
+  parser, the interface, the expect script and the startup script.
+- The startup script loads `config/validator.env`, resolves its own repository
+  location, and pipes the reader loop's output through `tee` so the log is
+  written by the calling user rather than by sudo.
 - `idtech-expect` renamed to
   `deploy/sudoers.d/busvalidator-reader.example`; its previous name did not
   indicate that it was a sudoers fragment.

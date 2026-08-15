@@ -1,10 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-LOGDIR=/home/atilhan/logs
+# Ayarlar config/validator.env'den gelir, yoksa eski sabit değerlere düşer.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+if [ -f "$REPO_DIR/config/validator.env" ]; then
+    # shellcheck disable=SC1091
+    . "$REPO_DIR/config/validator.env"
+fi
+
+VALIDATOR_USER="${VALIDATOR_USER:-$(id -un)}"
+VALIDATOR_HOME="${VALIDATOR_HOME:-$HOME}"
+VALIDATOR_FIFO="${VALIDATOR_FIFO:-/tmp/bus_payment_control}"
+LOGDIR="${VALIDATOR_LOG_DIR:-$VALIDATOR_HOME/logs}"
+
+export VALIDATOR_FIFO
+export VALIDATOR_API_URL VALIDATOR_CARD_DATA VALIDATOR_ASSETS VALIDATOR_FARE
+
 mkdir -p "$LOGDIR"
 touch "$LOGDIR/start_all.log" "$LOGDIR/card_gui.service.log" "$LOGDIR/card_reader_live.log"
-chown -R atilhan:atilhan "$LOGDIR" || true
+chown -R "$VALIDATOR_USER:$VALIDATOR_USER" "$LOGDIR" || true
 
 echo "$(date +%FT%T) [start_all] starting" >> "$LOGDIR/start_all.log"
 
@@ -15,18 +30,19 @@ pkill -f card_gui.py 2>/dev/null || true
 sleep 1
 
 # 2) FIFO'yu yeniden oluştur
-rm -f /tmp/bus_payment_control 2>/dev/null || true
-mkfifo /tmp/bus_payment_control
-chown atilhan:atilhan /tmp/bus_payment_control || true
+rm -f "$VALIDATOR_FIFO" 2>/dev/null || true
+mkfifo "$VALIDATOR_FIFO"
+chown "$VALIDATOR_USER:$VALIDATOR_USER" "$VALIDATOR_FIFO" || true
 echo "$(date +%FT%T) [start_all] fifo ready" >> "$LOGDIR/start_all.log"
 
 # 3) ÖNCE GUI'yi başlat (tek okuyucu bu olacak!)
-DISPLAY=:0 XAUTHORITY=/home/atilhan/.Xauthority \
-    /usr/bin/python3 /home/atilhan/card_gui.py >> "$LOGDIR/card_gui.service.log" 2>&1 &
+DISPLAY="${DISPLAY:-:0}" XAUTHORITY="${XAUTHORITY:-$VALIDATOR_HOME/.Xauthority}" \
+    /usr/bin/python3 "$REPO_DIR/src/gui/card_gui.py" >> "$LOGDIR/card_gui.service.log" 2>&1 &
 
 # 4) GUI ayağa kalksın diye az bekle
 sleep 1
 
 # 5) kart okuyucu/expect
-sudo /usr/bin/expect -f /home/atilhan/run_ctls_read.exp >> "$LOGDIR/card_reader_live.log" 2>&1
-
+# Yönlendirme sudo'dan etkilenmez, o yüzden log'a tee ile yazılıyor (SC2024).
+sudo -E /usr/bin/expect -f "$REPO_DIR/src/reader/run_ctls_read.exp" 2>&1 \
+    | tee -a "$LOGDIR/card_reader_live.log"

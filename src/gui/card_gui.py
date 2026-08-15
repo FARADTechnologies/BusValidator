@@ -7,6 +7,22 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PyQt5.QtCore import Qt, QTimer, QPoint, QThread, pyqtSignal, QObject
 from PyQt5.QtGui import QPainter, QPalette, QColor, QPixmap
 
+def mask_pan(pan):
+    # Ekran otobüste herkesin görebileceği yerde. Yolcunun hangi kartla
+    # ödediğini anlaması için son 4 hane yeter.
+    if len(pan) < 10:
+        return "*" * len(pan)
+    return pan[:6] + "*" * (len(pan) - 10) + pan[-4:]
+
+
+def mask_command(command):
+    # Komut izleri log'a gidiyor, PAN'ı açık bırakmamalı.
+    if not command.startswith("PAN:"):
+        return command
+    head, _, rest = command.partition(';')
+    return "PAN:" + mask_pan(head[4:]) + (';' + rest if rest else "")
+
+
 # FIFO/Command emitter
 class CommandEmitter(QObject):
     command_signal = pyqtSignal(str)
@@ -28,7 +44,7 @@ class FifoReader(QThread):
                             break
                         command = line.strip()
                         if command:
-                            print(f"Komut alındı: {command}")
+                            print(f"Komut alındı: {mask_command(command)}")
                             self.emitter.command_signal.emit(command)
             except Exception as e:
                 if self.running:
@@ -77,7 +93,7 @@ class BusPaymentScreen(QWidget):
         self.emitter.command_signal.connect(self.process_command)
 
         # settings
-        self.default_fare = "₼0.50"
+        self.default_fare = "₼" + os.environ.get("VALIDATOR_FARE", "0.50")
         self.fare_amount = self.default_fare
         self.success_text = "Ödəmə Uğurludur"
         self.failure_text = "Ödəmə Uğursuzdur"
@@ -140,7 +156,9 @@ class BusPaymentScreen(QWidget):
         # credit-card image (visible when idle showing fare)
         self.card_img = QLabel()
         self.card_img.setAlignment(Qt.AlignCenter)
-        img_path = "/home/atilhan/images/credit-card.png"
+        img_path = os.path.join(
+            os.environ.get("VALIDATOR_ASSETS", "/home/validator/assets"),
+            "credit-card.png")
         if os.path.exists(img_path):
             pix = QPixmap(img_path).scaled(300, 190, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             self.card_img.setPixmap(pix)
@@ -251,7 +269,7 @@ class BusPaymentScreen(QWidget):
         self.card_img.setVisible(True)
 
     def set_pan_number(self, pan):
-        self.fare_label.setText(f"{pan}")
+        self.fare_label.setText(mask_pan(pan))
 
     def set_expiry_date(self, expiry):
         if len(expiry) == 4:
@@ -297,7 +315,7 @@ class BusPaymentScreen(QWidget):
 
     # FIFO setup
     def setup_fifo(self):
-        self.fifo_path = "/tmp/bus_payment_control"
+        self.fifo_path = os.environ.get("VALIDATOR_FIFO", "/tmp/bus_payment_control")
         try:
             if not os.path.exists(self.fifo_path):
                 os.mkfifo(self.fifo_path)
@@ -307,7 +325,7 @@ class BusPaymentScreen(QWidget):
         self.fifo_reader.start()
 
     def process_command(self, command):
-        print(f"Komut işleniyor: {command}")
+        print(f"Komut işleniyor: {mask_command(command)}")
 
         if command.startswith("PAN:"):
             parts = command.split(';')
