@@ -231,5 +231,5 @@ Apache 2.0 — see [LICENSE](LICENSE).
 
 ## Contact
 
-Hasan Dadaszade — [LinkedIn](https://www.linkedin.com/in/hesen-dadaszade/) ·
+[LinkedIn](https://www.linkedin.com/in/hesen-dadaszade/) ·
 [GitHub](https://github.com/FARADTechnologies)
